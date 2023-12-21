@@ -1,5 +1,5 @@
 Name:           ukify-kernel-hooks
-Version:        0.0.3
+Version:        0.0.4
 Release:        1%{?dist}
 Summary:        Some hooks to build signed UKIs and maintain systemd-boot
 BuildArch:      noarch
@@ -28,15 +28,20 @@ fi
 LATEST_INITRAMFS=`ls -t /boot/initramfs-* | head -n 1`
 LATEST_KERNEL=`ls -t /boot/vmlinuz-* | head -n 1`
 VERSION=`echo ${LATEST_INITRAMFS} | grep -Eo "[0-9]\.[0-9]\.[0-9]-[0-9]+"`
+UNAME=`echo ${LATEST_INITRAMFS} | grep -Eo "[0-9]\.[0-9]\.[0-9]-[0-9]+\.[a-z0-9]+\.[a-z0-9\_]+"`
 OUTPUT_FILENAME="UKI-${VERSION}.efi"
-echo "I think the initramfs or kernel were modified. Building UKI for ${LATEST_INITRAMFS}, ${LATEST_KERNEL} in /boot/efi/EFI/Linux/${OUTPUT_FILENAME}"
+echo "I think the initramfs or kernel were modified. Building UKI for ${LATEST_INITRAMFS}, ${LATEST_KERNEL} in /boot/efi/EFI/Linux/${OUTPUT_FILENAME}, uname = ${UNAME}"
 /usr/lib/systemd/ukify build \
   --linux="${LATEST_KERNEL}" \
   --initrd="${LATEST_INITRAMFS}" \
   --cmdline="root=UUID=81fce07c-cbcd-48c5-8330-9ae376f312f3 ro rootflags=subvol=root video=eDP-1:2256x1504 amdgpu.sg_display=0 modprobe.blacklist=nouveau rd.driver.blacklist=nouveau rhgb" \
+  --uname="${UNAME}" \
   --stub="/usr/lib/systemd/boot/efi/linuxx64.efi.stub" \
   --secureboot-private-key="/etc/EFI/sbkeys/my_keys/db/DB.key" \
   --secureboot-certificate="/etc/EFI/sbkeys/my_keys/db/DB.pem" \
+  --pcr-private-key="/etc/EFI/pcrkeys/tpm2-pcr-private.pem" \
+  --pcr-public-key="/etc/EFI/pcrkeys/tpm2-pcr-public.pem" \
+  --measure \
   --sign-kernel \
   --signtool=sbsign \
   --output=/boot/efi/EFI/Linux/${OUTPUT_FILENAME}
@@ -46,3 +51,5 @@ echo "I think the initramfs or kernel were modified. Building UKI for ${LATEST_I
 %changelog
 * Thu Dec 21 2023 Joshua Mack <mackncheesiest@gmail.com>
 - Initial spec
+* Thu Dec 21 2023 Joshua Mack <mackncheesiest@gmail.com>
+- Added PCR measurement signing and uname info
